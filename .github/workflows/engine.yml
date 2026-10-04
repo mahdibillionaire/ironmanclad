@@ -92,22 +92,25 @@ jobs:
 
       - name: Prepare Workspace Dependencies
         run: |
+          export PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
           # Link pre-built container node_modules from /app into current workspace
           if [ -d "/app/node_modules" ]; then
             echo "Linking pre-built container node_modules into workspace..."
             ln -sfn /app/node_modules ./node_modules || true
           fi
-          # Ensure matching Playwright chromium binary is armed
-          npx playwright install chromium || true
           # Ensure any missing dependencies are quickly satisfied
           if [ -f "package.json" ]; then
             echo "Verifying dependency completeness..."
             npm install --prefer-offline --no-audit || true
           fi
+          # Ensure matching Playwright chromium binary is guaranteed for the installed playwright version
+          echo "Arming Playwright Chromium binary..."
+          npx playwright install chromium || true
 
       - name: Run WebEngine Worker
         env:
           NODE_PATH: /app/node_modules:./node_modules
+          PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
           OVERRIDE_TARGET_QUERY: ${{ inputs.target_query }}
           MAX_LEADS: ${{ inputs.max_leads }}
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}

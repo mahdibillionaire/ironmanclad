@@ -18,11 +18,16 @@
     "google-spreadsheet": "^5.2.0",
     "nodemailer": "^8.0.10",
     "playwright": "1.50.0",
+    "playwright-core": "1.50.0",
     "playwright-extra": "^4.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "quickemailverification": "^1.0.4",
     "tsx": "^4.19.2",
     "uuid": "^10.0.0"
+  },
+  "overrides": {
+    "playwright": "1.50.0",
+    "playwright-core": "1.50.0"
   },
   "devDependencies": {
     "@types/node": "^20.17.0",
