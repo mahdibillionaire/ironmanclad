@@ -67,21 +67,42 @@ jobs:
       - name: Synchronize Private Engine Payload from Google Drive
         run: |
           mkdir -p payload_sync
-          GDRIVE_PATH="${{ secrets.GDRIVE_PATH || 'gdrive:pmu-engine' }}"
-          echo "Pulling payload from ${GDRIVE_PATH}..."
-          rclone copy "$GDRIVE_PATH" ./payload_sync --drive-acknowledge-abuse -v
+          echo "Pulling payload from Google Drive (Pmu Sniper)..."
+          rclone copy gdrive: ./payload_sync --drive-acknowledge-abuse -v
           
-          # Move payload into working directory
+          # Move payload files into working directory
           cp -rn ./payload_sync/* . || true
           rm -rf payload_sync
+
+          # Ensure .env is present (either from Drive or from GitHub Secrets fallback)
+          if [ ! -f ".env" ] && [ -n "${{ secrets.ENV_FILE }}" ]; then
+            echo "Injecting .env from repository secret..."
+            echo "${{ secrets.ENV_FILE }}" > .env
+          fi
 
       - name: Run WebEngine Worker
         env:
           OVERRIDE_TARGET_QUERY: ${{ inputs.target_query }}
           MAX_LEADS: ${{ inputs.max_leads }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          QEV_API_KEY: ${{ secrets.QEV_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
+          GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
+          GOOGLE_APP_PASSWORD: ${{ secrets.GOOGLE_APP_PASSWORD }}
+          SCRAPER_EMAIL: ${{ secrets.SCRAPER_EMAIL }}
+          SCRAPER_PASSWORD: ${{ secrets.SCRAPER_PASSWORD }}
+          SCRAPER_EMAIL1: ${{ secrets.SCRAPER_EMAIL1 }}
+          SCRAPER_PASSWORD1: ${{ secrets.SCRAPER_PASSWORD1 }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          NVIDIA_API_KEY_2: ${{ secrets.NVIDIA_API_KEY_2 }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           if [ ! -f "worker.ts" ]; then
-            echo "::error ::worker.ts was not found after Google Drive synchronization. Check your GDRIVE_PATH."
+            echo "::error ::worker.ts was not found after Google Drive synchronization. Check your Google Drive payload."
             exit 1
           fi
           npx tsx worker.ts
@@ -89,9 +110,8 @@ jobs:
       - name: Synchronize Updated State Back to Google Drive
         if: always()
         run: |
-          GDRIVE_PATH="${{ secrets.GDRIVE_PATH || 'gdrive:pmu-engine' }}"
-          echo "Syncing updated state back to ${GDRIVE_PATH}..."
-          rclone copy . "$GDRIVE_PATH" \
+          echo "Syncing state back to Google Drive (Pmu Sniper)..."
+          rclone copy . gdrive: \
             --exclude "node_modules/**" \
             --exclude ".git/**" \
             --exclude ".github/**" \

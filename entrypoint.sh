@@ -17,9 +17,9 @@ WORKSPACE_DIR="/app/payload"
 mkdir -p "$WORKSPACE_DIR"
 
 # 2. Synchronize private payload from Google Drive (or remote storage)
-GDRIVE_PATH="${GDRIVE_REMOTE_PATH:-gdrive:pmu-engine}"
+GDRIVE_PATH="${GDRIVE_REMOTE_PATH:-gdrive:}"
 if command -v rclone &> /dev/null && [ -f ~/.config/rclone/rclone.conf ]; then
-    echo "[WEBENGINE] Synchronizing project payload from ${GDRIVE_PATH}..."
+    echo "[WEBENGINE] Synchronizing project payload from Google Drive (Pmu Sniper)..."
     rclone copy "$GDRIVE_PATH" "$WORKSPACE_DIR" --drive-acknowledge-abuse -v || true
 fi
 
@@ -28,6 +28,12 @@ if [ -d "$WORKSPACE_DIR" ] && [ -f "$WORKSPACE_DIR/worker.ts" ]; then
     cd "$WORKSPACE_DIR"
 else
     cd /app
+fi
+
+# Fallback injection of .env from ENV_FILE if missing
+if [ ! -f ".env" ] && [ -n "$ENV_FILE" ]; then
+    echo "[WEBENGINE] Injecting .env from environment secret..."
+    echo "$ENV_FILE" > .env
 fi
 
 if [ -f "package.json" ]; then
