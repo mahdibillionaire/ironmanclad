@@ -90,8 +90,22 @@ jobs:
             echo "${{ secrets.ENV_FILE }}" > .env
           fi
 
+      - name: Prepare Workspace Dependencies
+        run: |
+          # Link pre-built container node_modules from /app into current workspace
+          if [ -d "/app/node_modules" ]; then
+            echo "Linking pre-built container node_modules into workspace..."
+            ln -sfn /app/node_modules ./node_modules || true
+          fi
+          # Ensure any missing dependencies are quickly satisfied
+          if [ -f "package.json" ]; then
+            echo "Verifying dependency completeness..."
+            npm install --prefer-offline --no-audit || true
+          fi
+
       - name: Run WebEngine Worker
         env:
+          NODE_PATH: /app/node_modules:./node_modules
           OVERRIDE_TARGET_QUERY: ${{ inputs.target_query }}
           MAX_LEADS: ${{ inputs.max_leads }}
           GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
@@ -111,6 +125,11 @@ jobs:
           NVIDIA_API_KEY_2: ${{ secrets.NVIDIA_API_KEY_2 }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
+          export NODE_PATH="/app/node_modules:./node_modules:${NODE_PATH}"
+          if [ ! -d "./node_modules" ] && [ -d "/app/node_modules" ]; then
+            ln -sfn /app/node_modules ./node_modules || true
+          fi
+
           if [ ! -f "worker.ts" ]; then
             echo "::error ::worker.ts was not found after Google Drive synchronization. Check your Google Drive payload."
             exit 1
