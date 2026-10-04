@@ -97,6 +97,8 @@ jobs:
             echo "Linking pre-built container node_modules into workspace..."
             ln -sfn /app/node_modules ./node_modules || true
           fi
+          # Ensure matching Playwright chromium binary is armed
+          npx playwright install chromium || true
           # Ensure any missing dependencies are quickly satisfied
           if [ -f "package.json" ]; then
             echo "Verifying dependency completeness..."
