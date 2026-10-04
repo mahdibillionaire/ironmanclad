@@ -1,0 +1,98 @@
+name: WebEngine Scheduled Automation
+
+on:
+  schedule:
+    # 5 runs per day spaced across optimal US business hours (UTC):
+    # - 13:00 UTC (09:00 AM EDT / 06:00 AM PDT)
+    # - 16:00 UTC (12:00 PM EDT / 09:00 AM PDT)
+    # - 18:00 UTC (02:00 PM EDT / 11:00 AM PDT)
+    # - 20:00 UTC (04:00 PM EDT / 01:00 PM PDT)
+    # - 22:00 UTC (06:00 PM EDT / 03:00 PM PDT)
+    - cron: '0 13,16,18,20,22 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      target_query:
+        description: 'Search Query Override (e.g., pmu artists in california)'
+        required: false
+        default: ''
+      max_leads:
+        description: 'Target Valid Leads'
+        required: false
+        default: '10'
+
+jobs:
+  run-engine:
+    name: Execute Outreach Cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout Public Engine Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Rclone Cloud Client
+        run: |
+          sudo -v ; curl -fsSL https://rclone.org/install.sh | sudo bash
+          rclone version
+
+      - name: Configure Secure Cloud Storage Credentials
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG_DATA }}
+        run: |
+          if [ -z "$RCLONE_CONFIG_DATA" ]; then
+            echo "::error ::RCLONE_CONFIG_DATA secret is not set in GitHub repository settings!"
+            exit 1
+          fi
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+          echo "Rclone config armed successfully."
+
+      - name: Install System Packages & Playwright Browsers
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Synchronize Private Engine Payload from Google Drive
+        run: |
+          mkdir -p payload_sync
+          GDRIVE_PATH="${{ secrets.GDRIVE_PATH || 'gdrive:pmu-engine' }}"
+          echo "Pulling payload from ${GDRIVE_PATH}..."
+          rclone copy "$GDRIVE_PATH" ./payload_sync --drive-acknowledge-abuse -v
+          
+          # Move payload into working directory
+          cp -rn ./payload_sync/* . || true
+          rm -rf payload_sync
+
+      - name: Run WebEngine Worker
+        env:
+          OVERRIDE_TARGET_QUERY: ${{ inputs.target_query }}
+          MAX_LEADS: ${{ inputs.max_leads }}
+        run: |
+          if [ ! -f "worker.ts" ]; then
+            echo "::error ::worker.ts was not found after Google Drive synchronization. Check your GDRIVE_PATH."
+            exit 1
+          fi
+          npx tsx worker.ts
+
+      - name: Synchronize Updated State Back to Google Drive
+        if: always()
+        run: |
+          GDRIVE_PATH="${{ secrets.GDRIVE_PATH || 'gdrive:pmu-engine' }}"
+          echo "Syncing updated state back to ${GDRIVE_PATH}..."
+          rclone copy . "$GDRIVE_PATH" \
+            --exclude "node_modules/**" \
+            --exclude ".git/**" \
+            --exclude ".github/**" \
+            --drive-acknowledge-abuse || true

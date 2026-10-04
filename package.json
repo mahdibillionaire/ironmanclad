@@ -1,0 +1,33 @@
+{
+  "name": "webengine",
+  "version": "1.0.0",
+  "description": "High-performance autonomous web automation and outreach runtime",
+  "main": "entrypoint.sh",
+  "scripts": {
+    "start": "tsx worker.ts",
+    "test": "echo \"Engine ready\""
+  },
+  "dependencies": {
+    "@google-cloud/logging": "^11.2.1",
+    "@google/generative-ai": "^0.24.1",
+    "deep-email-validator": "^0.1.27",
+    "dotenv": "^17.4.2",
+    "email-validator": "^2.0.4",
+    "g4f": "^1.4.6",
+    "google-auth-library": "^10.6.2",
+    "google-spreadsheet": "^5.2.0",
+    "nodemailer": "^8.0.10",
+    "playwright": "^1.50.0",
+    "playwright-extra": "^4.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "quickemailverification": "^1.0.4",
+    "tsx": "^4.19.2",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.7.0"
+  }
+}
