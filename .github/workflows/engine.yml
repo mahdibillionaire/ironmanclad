@@ -70,8 +70,8 @@ jobs:
           echo "Pulling payload from Google Drive (Pmu Sniper)..."
           rclone copy gdrive: ./payload_sync --drive-acknowledge-abuse -v
           
-          # Move payload files into working directory
-          cp -rn ./payload_sync/* . || true
+          # Move payload files into working directory (force overwrite to guarantee fresh payload)
+          cp -rf ./payload_sync/* . || true
           rm -rf payload_sync
 
           # Ensure .env is present (either from Drive or from GitHub Secrets fallback)
