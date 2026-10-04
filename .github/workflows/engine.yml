@@ -26,24 +26,40 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
+    # 🚀 CONTAINER EXECUTION LAYER (Pre-built GHCR image with Playwright, Python, Rclone, Xvfb)
+    container:
+      image: ghcr.io/mahdibillionaire/ironmanclad:latest
+      options: --ipc=host
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     steps:
       - name: Checkout Public Engine Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js Runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Setup Python Environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Rclone Cloud Client
-        run: |
-          sudo -v ; curl -fsSL https://rclone.org/install.sh | sudo bash
-          rclone version
+      # =========================================================================
+      # ⚠️ FALLBACK NATIVE RUNNER SETUP (PRESERVED FOR INSTANT ROLLBACK)
+      # If container pull is ever slower than native execution, comment out the
+      # 'container:' block above and uncomment the 4 steps below:
+      # =========================================================================
+      # - name: Setup Node.js Runtime
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      # - name: Setup Python Environment
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.11'
+      # - name: Install Rclone Cloud Client
+      #   run: |
+      #     sudo -v ; curl -fsSL https://rclone.org/install.sh | sudo bash
+      #     rclone version
+      # - name: Install System Packages, Xvfb & Playwright Browsers
+      #   run: |
+      #     sudo apt-get update && sudo apt-get install -y xvfb
+      #     npm install
+      #     npx playwright install --with-deps chromium
 
       - name: Configure Secure Cloud Storage Credentials
         env:
@@ -57,12 +73,6 @@ jobs:
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
           chmod 600 ~/.config/rclone/rclone.conf
           echo "Rclone config armed successfully."
-
-      - name: Install System Packages, Xvfb & Playwright Browsers
-        run: |
-          sudo apt-get update && sudo apt-get install -y xvfb
-          npm install
-          npx playwright install --with-deps chromium
 
       - name: Synchronize Private Engine Payload from Google Drive
         run: |
@@ -105,7 +115,11 @@ jobs:
             echo "::error ::worker.ts was not found after Google Drive synchronization. Check your Google Drive payload."
             exit 1
           fi
-          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx tsx worker.ts
+          if command -v xvfb-run >/dev/null 2>&1; then
+            xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx tsx worker.ts
+          else
+            npx tsx worker.ts
+          fi
 
       - name: Synchronize Updated State Back to Google Drive
         if: always()
