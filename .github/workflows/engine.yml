@@ -58,8 +58,9 @@ jobs:
           chmod 600 ~/.config/rclone/rclone.conf
           echo "Rclone config armed successfully."
 
-      - name: Install System Packages & Playwright Browsers
+      - name: Install System Packages, Xvfb & Playwright Browsers
         run: |
+          sudo apt-get update && sudo apt-get install -y xvfb
           npm install
           npx playwright install --with-deps chromium
 
@@ -104,7 +105,7 @@ jobs:
             echo "::error ::worker.ts was not found after Google Drive synchronization. Check your Google Drive payload."
             exit 1
           fi
-          npx tsx worker.ts
+          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx tsx worker.ts
 
       - name: Synchronize Updated State Back to Google Drive
         if: always()
